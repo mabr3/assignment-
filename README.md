@@ -21,7 +21,7 @@ I've tried to keep a structure similar to the one in the original repo. I've add
 
 ## Changes made to infra:
 - In **docker-compose.yml** I've changed the version of the mariadb image from *latest* to  *10.9.7*, as a fix for an error such as described [here](https://github.com/bitsondatadev/trino-getting-started/issues/31#issuecomment-1611865456).
-- In order to create a location for checkpointing in structured streaming, in file **copy_to_minio.sh** I've added the following line:`mc mb minio/checkpoints --ignore-existin` . Besides that, I've also created separate paths for each type of data file (Orders, Industries, Customers, Products)
+- In order to create a location for checkpointing in structured streaming, in file **copy_to_minio.sh** I've added the following line: `mc mb minio/checkpoints --ignore-existing` . Besides that, I've also created separate paths for each type of data file (Orders, Industries, Customers, Products)
 
 
 ## Data Model
@@ -30,7 +30,49 @@ In order to solve the assignment, the only info we need is how much a customer s
 
 For the final table, where the aggregated info would be kept, I propose one where we can keep the industry, the ranking (from 1 to 3 in terms of fluctiation, where 1 is the one that had a bigger change in the last 24h compared to the previous 30d), the day it refers to and also the 30d avg, 24h value, and the delta.
 
-In a real case scenario where we would stora all of the data shared in the assignment I would propose the following:
+In a real case scenario where we would store all of the data shared in the assignment I would propose the following:
+
+```mermaid
+erDiagram
+  Products {
+    string product_id PK
+    string product_name
+    float price
+  }
+
+  Orders ||--|{ Order_Lines : contains
+  Orders ||--|| Customers : has
+  Orders {
+    string order_id PK
+    string customer_id FK
+    float amount
+    datetime timestamp
+  }
+
+  Order_Lines ||--|| Products : contains
+  Order_Lines {
+    string order_id PK,FK
+    string product_id PK,FK
+    int quantity 
+    float price
+  }
+    
+  Customers {
+    string customer_id PK
+    string company_name
+	string industry
+  }
+
+  Fluctuations {
+	string industry PK
+	date agg_date PK
+	float string[30d_avg]
+	float string[24h_value]
+	float delta
+	int rank
+  } 
+```
+
 
 ## How does it work
 ### Customers batch flow

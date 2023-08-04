@@ -1,0 +1,16 @@
+table:
+  schema: assignment_db
+  name: customers
+  format: iceberg
+  partition:
+    - ingest_date
+  columns:
+    - name: customer_id
+      type: STRING
+    - name: company_name
+      type: STRING
+    - name: industry
+      type: STRING
+    - name: ingest_date
+      type: DATE
+  

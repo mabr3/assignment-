@@ -1,0 +1,51 @@
+---
+table:
+  schema: assignment_db
+  name: orders
+  format: iceberg
+  partition:
+    - year
+    - month
+    - day
+  columns:
+    - name: order_id
+      type: STRING
+    - name: customer_id
+      type: STRING
+    - name: amount
+      type: FLOAT
+    - name: timestamp
+      type: TIMESTAMP
+    - name: year
+      type: STRING
+    - name: month
+      type: STRING
+    - name: day
+      type: STRING
+---      
+table:
+  schema: assignment_db
+  name: order_lines
+  format: iceberg
+  partition:
+    - year
+    - month
+    - day
+    - order_id
+  columns:
+    - name: order_id
+      type: STRING
+    - name: product_id
+      type: STRING
+    - name: price
+      type: FLOAT
+    - name: volume
+      type: INT
+    - name: timestamp
+      type: TIMESTAMP
+    - name: year
+      type: STRING
+    - name: month
+      type: STRING
+    - name: day
+      type: STRING

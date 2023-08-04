@@ -21,13 +21,63 @@ I've tried to keep a structure similar to the one in the original repo. I've add
 ```
 
 ## Changes made to infra:
-- In **docker-compose.yml** I've changed the version of the mariadb image from *latest* to  *10.9.7*, as a fix for an error such as described [here]().
-- In order to create a location for checkpointing in structured streaming, in file **copy_to_minio.sh** I've added the following line:
+- In **docker-compose.yml** I've changed the version of the mariadb image from *latest* to  *10.9.7*, as a fix for an error such as described [here](https://github.com/bitsondatadev/trino-getting-started/issues/31#issuecomment-1611865456).
+- In order to create a location for checkpointing in structured streaming, in file **copy_to_minio.sh** I've added the following line:`mc mb minio/checkpoints --ignore-existin` . Besides that, I've also created separate paths for each type of data file (Orders, Industries, Customers, Products)
 
-`mc mb minio/checkpoints --ignore-existing`
+
+## Data Model
+
+In order to solve the assignment, the only info we need is how much a customer spent in each order, there's no need for details regarding what the order contains nor the products ordered, as well as what industry corresponds to each costumer.
+
+For the final table, where the aggregated info would be kept, I propose one where we can keep the industry, the ranking (from 1 to 3 in terms of fluctiation, where 1 is the one that had a bigger change in the last 24h compared to the previous 30d), the day it refers to and also the 30d avg, 24h value, and the delta.
+
+In a real case scenario where we would stora all of the data shared in the assignment I would propose the following:
 
 ## How does it work
+### Customers batch flow
+For the customer data, assuming this would be a CSV that gets uploaded from time to time, the ideal solution would be to have a service like AWS Lambda which would be triggered by new files in a certain bucket and process them.
+In this case, the approach I've followed was to have a spark stream reading from the bucket, so that when a new file with data came into a specific folder, it would get processed. Then, I would save the data. For this, I've also created a new folder inside the **demo-data** bucket, as described in the infra section.
 
+Another assumption made was that customers from the same company would operate on the same industries, e.g.
+
+```mermaid
+erDiagram
+  Customers {
+    string customer_id (PK)
+    string company_name
+	string industry
+  }
+
+  Products {
+    string product_id (PK)
+    string product_name
+    float price
+  }
+
+  Orders ||--|{ Order_Lines {
+    string order_id (PK)
+    string customer_id (FK)
+    float amount
+    datetime timestamp
+  }
+
+  Order_Lines ||--|| Products {
+    string order_line_id (PK)
+    string order_id (FK)
+    string product_id (FK)
+    int quantity
+    float price
+  }
+
+  Fluctuations {
+	string industry
+	date agg_date
+	float 30d_avg
+	float 24h_value
+	float delta
+	int rank
+  }
+  ```
 
 ## Usage
 

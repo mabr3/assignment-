@@ -31,7 +31,6 @@ table:
     - year
     - month
     - day
-    - order_id
   columns:
     - name: order_id
       type: STRING

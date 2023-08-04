@@ -9,7 +9,7 @@ table:
       type: STRING
     - name: company_name
       type: STRING
-    - name: industry
+    - name: specialized_industries
       type: STRING
     - name: ingest_date
       type: DATE

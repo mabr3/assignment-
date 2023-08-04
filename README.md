@@ -16,8 +16,7 @@ I've tried to keep a structure similar to the one in the original repo. I've add
 ├── README.md
 ├── infra
 ├── notebooks
-├── spark-jobs-python
-└── spark-jobs-scala
+└── spark-jobs-python
 ```
 
 ## Changes made to infra:
@@ -40,46 +39,21 @@ In this case, the approach I've followed was to have a spark stream reading from
 
 Another assumption made was that customers from the same company would operate on the same industries, e.g.
 
-```mermaid
-erDiagram
-  Customers {
-    string customer_id (PK)
-    string company_name
-	string industry
-  }
-
-  Products {
-    string product_id (PK)
-    string product_name
-    float price
-  }
-
-  Orders ||--|{ Order_Lines {
-    string order_id (PK)
-    string customer_id (FK)
-    float amount
-    datetime timestamp
-  }
-
-  Order_Lines ||--|| Products {
-    string order_line_id (PK)
-    string order_id (FK)
-    string product_id (FK)
-    int quantity
-    float price
-  }
-
-  Fluctuations {
-	string industry
-	date agg_date
-	float 30d_avg
-	float 24h_value
-	float delta
-	int rank
-  }
-  ```
-
 ## Usage
+There are three spark jobs used in my solution.
+XX is used to consume the orders from Kafka and store them in their respective tables (`orders`, and `order_lines`), as well as keeping a raw_data history in binary format - as in a bronze-silver structure.
+
+YY is used to update the Customer data. It keeps track of the files inserted in the data-demo/Customers/ path in Minio and processes each new file to update the data in the `customers` table.
+
+ZZ is the aggregating job. It uses a stream on the orders table to keep track of both the 30 day average, as well as the 24h values, compare them, and store them in the `fluctuations` table.
+
+These are started with 
+```
+spark sbmutigfvd osjfshighids sjfigsdf
+```
+In the *schema* folder I'm storing the schemas used for each dataframe as well as yaml files which provide the configuration for each of the tables.
+
+Finally, there's a notebook in the **notebooks** folder which has an SQL snippet to generate the same data as the one in the aggregation job in case someone wants to do ad-hoc querying of the same style (e.g. comparing with the last 7 days instead of 30)
 
 ## Further considerations
 
@@ -98,7 +72,8 @@ Py4JJavaError: An error occurred while calling o235.start.
 	at org.apache.hadoop.ipc.Client$Connection.run(Client.java:1134)
 ``````
 
-Which I solved by BLA BLA FIX ME
+Which I tried solving by adding the following line in **spark-defaults.conf**:
+`spark.driver.maxResultSize              2g`.
 
 For reference, these are the specs I'm using, in a 2021 MacBook Pro:
 - macOS: Ventura 13.4

@@ -1,0 +1,15 @@
+table:
+  schema: assignment_db
+  name: products
+  format: iceberg
+  partition:
+    - ingest_date
+  columns:
+    - name: product_id
+      type: STRING
+    - name: product_name
+      type: STRING
+    - name: price
+      type: DOUBLE
+    - name: ingest_date
+      type: DATE

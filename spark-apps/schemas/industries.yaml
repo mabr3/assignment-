@@ -1,0 +1,11 @@
+table:
+  schema: assignment_db
+  name: industries
+  format: iceberg
+  partition:
+    - ingest_date
+  columns:
+    - name: industry
+      type: STRING
+    - name: ingest_date
+      type: DATE

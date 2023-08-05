@@ -40,11 +40,10 @@ I've tried to keep a structure similar to the one in the original repo. I've add
 
 ## Data Model
 
-In order to solve the assignment, the only info we need is how much a customer spent in each order, there's no need for details regarding what the order contains nor the products ordered, as well as what industry corresponds to each costumer.
+In order to solve the assignment, the only info we need is how much a customer spent in each order (there's no need for details regarding what the order contains nor the products ordered), as well as what industry corresponds to each costumer.
 
 For the final table, where the aggregated info would be kept, I propose one where we can keep the industry, the ranking (from 1 to 3 in terms of fluctiation, where 1 is the one that had a bigger change in the last 24h compared to the previous 30d), the day it refers to and also the 30d avg, 24h value, and the delta.
-
-In a real case scenario where we would store all of the data shared in the assignment I would propose the following:
+In the following diagram we can see the data model, although the concepts shown don't really apply to the warehouse, I'm using it as way to show the tables we have and how they relate to each other. I've deceided to keep the price for both the **Products** and **Order_Lines** table as they could differ in a real world scenario.
 
 ```mermaid
 erDiagram
@@ -85,7 +84,7 @@ erDiagram
 
   Fluctuations {
 	string industry PK
-	date agg_date PK
+	date aggregation_date PK
 	float string[30d_avg]
 	float string[24h_value]
 	float delta
@@ -115,25 +114,21 @@ To run:
 
 ```./spark-jobs-python/run-in-spark.sh orders.py```
 
+### Aggregated Data Job
+
+In order to produce the results and answer the aforementioned question, this solution has a job called **fluctuations.py** that will provide us with the top 3 fluctuations and store them in the required table. This job first loads the dimensions data (customers and their industries) and joins it in a broadcast with the orders data. To this dataset, a filter is applied using the table partitions for each of the time periods (24h and 30d). Then they are joined and the comparison is made.
+
+To run it, there are two options. We can give it a specific date to use as the 24h we want to aggregate:
+```./spark-jobs-python/run-in-spark.sh fluctuations.py --agg_date=2023-08-04```
+
+Or run it without arguments, which will use the last 24h:
+
+```./spark-jobs-python/run-in-spark.sh fluctuations.py```
+
+
 ### Notebook
 
 Lastly, there's a notebook that does the same as the aggregating job, but in SQL.
-
-## Usage
-
-XX is used to consume the orders from Kafka and store them in their respective tables (`orders`, and `order_lines`), as well as keeping a raw_data history in binary format - as in a bronze-silver structure.
-
-YY is used to update the Customer data. It keeps track of the files inserted in the data-demo/Customers/ path in Minio and processes each new file to update the data in the `customers` table.
-
-ZZ is the aggregating job. It uses a stream on the orders table to keep track of both the 30 day average, as well as the 24h values, compare them, and store them in the `fluctuations` table.
-
-These are started with 
-```
-spark sbmutigfvd osjfshighids sjfigsdf
-```
-In the *schema* folder I'm storing the schemas used for each dataframe as well as yaml files which provide the configuration for each of the tables.
-
-Finally, there's a notebook in the **notebooks** folder which has an SQL snippet to generate the same data as the one in the aggregation job in case someone wants to do ad-hoc querying of the same style (e.g. comparing with the last 7 days instead of 30)
 
 ## Comments
 

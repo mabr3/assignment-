@@ -26,16 +26,30 @@ I've tried to keep a structure similar to the one in the original repo. I've add
 │   └── copy_to_minio.sh
 ├── notebooks
 ├── spark-apps
+│   ├── customers.py
+│   ├── fluctuations.py
 │   ├── initial_loader.py
 │   ├── orders.py
 │   ├── schemas
+│   │   ├── customers.py
+│   │   ├── customers.yaml
+│   │   ├── fluctuations.yaml
+│   │   ├── industries.py
+│   │   ├── industries.yaml
+│   │   ├── orders.py
+│   │   ├── orders.yaml
+│   │   ├── products.py
+│   │   └── products.yaml
 │   └── utils.py
-└── spark-apps-python
+└── spark-jobs-python
+    ├── publish.sh
+    └── run-in-spark.sh
 ```
 
 ## Changes made to infra:
 - In **docker-compose.yml** I've changed the version of the mariadb image from *latest* to  *10.9.7*, as a fix for an error such as described [here](https://github.com/bitsondatadev/trino-getting-started/issues/31#issuecomment-1611865456).
 - In order to create a location for checkpointing in structured streaming, in file **copy_to_minio.sh** I've added the following line: `mc mb minio/checkpoints --ignore-existing` . Besides that, I've also created separate paths for each type of data file (Orders, Industries, Customers, Products)
+- in **run-in-spark.sh** I've changed how the script handles arguments to be able to use more than one argument when submitting a spark job.
 
 
 ## Data Model

@@ -82,7 +82,7 @@ def run():
                        .format("kafka")
                        .option("subscribe", "orders")
                        .option("kafka.bootstrap.servers", "kafka:9092")
-                       .option("startingOffsets", "earliest")
+                       .option("startingOffsets", "latest")
                        .option("failOnDataLoss", "true")
                        .option("group.id", "OrderConsumer")
                        .load())

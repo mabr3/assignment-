@@ -1,0 +1,19 @@
+table:
+  schema: assignment_db
+  name: fluctuations
+  format: iceberg
+  partition:
+    - aggregation_date
+  columns:
+    - name: aggregation_date
+      type: DATE
+    - name: industry
+      type: STRING
+    - name: rank
+      type: INTEGER
+    - name: 24h_value
+      type: float
+    - name: 30d_avg
+      type: float
+    - name: diff
+      type: float

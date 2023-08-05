@@ -1,0 +1,149 @@
+version: '3.7'
+
+volumes:
+  minio-data:
+    driver: local
+  mariadb-data:
+    driver: local
+  jupyter-data:
+    driver: local
+
+networks:
+  trino-network:
+    driver: bridge
+
+services:
+  trino-coordinator:
+    image: 'trinodb/trino:391'
+    hostname: trino-coordinator
+    depends_on:
+      - hive-metastore
+    ports:
+      - '9090:8080'
+    volumes:
+      - ./etc:/etc/trino
+    networks:
+      - trino-network
+    deploy:
+      resources:
+        limits:
+          memory: 4GB
+
+  mariadb:
+    image: 'mariadb:10.9.7'
+    hostname: mariadb
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+      MYSQL_DATABASE: metastore_db
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    networks:
+      - trino-network
+
+  hive-metastore:
+      hostname: hive-metastore
+      image: 'bitsondatadev/hive-metastore:latest'
+      platform: linux/amd64
+      ports:
+        - '9083:9083' # Metastore Thrift
+      volumes:
+        - ./conf/metastore-site.xml:/opt/apache-hive-metastore-3.0.0-bin/conf/metastore-site.xml:ro
+        - ./libs/iceberg-hive-runtime-0.14.0.jar:/opt/apache-hive-metastore-3.0.0-bin/lib/iceberg-hive-runtime-0.14.0.jar  
+      environment:
+        METASTORE_DB_HOSTNAME: mariadb
+      depends_on:
+        - mariadb
+      networks:
+        - trino-network
+
+  minio:
+    hostname: minio
+    image: 'minio/minio:latest'
+    container_name: minio
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio-data:/data
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=minio123
+    command: server /data --console-address ":9001"
+    networks:
+      - trino-network
+
+  minio-mc:
+    hostname: minio-mc
+    image: 'minio/mc:latest'
+    container_name: minio-mc 
+    depends_on:
+      - minio   
+    volumes:
+      - ./data:/data
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=minio123
+    entrypoint: /bin/bash
+    command: ./data/copy_to_minio.sh
+    networks:
+      - trino-network
+
+  kafka:
+    hostname: kafka
+    image: 'brennrec/kafka:3.2.1'
+    container_name: kafka
+    ports:
+      - '9092:9092' 
+    networks:
+      - trino-network
+
+  spark-iceberg:
+    image: tabulario/spark-iceberg:3.3.0_0.14.0
+    depends_on:
+      - hive-metastore
+    container_name: spark-iceberg
+    environment:
+      - AWS_ACCESS_KEY_ID=minio
+      - AWS_SECRET_ACCESS_KEY=minio123
+      - AWS_S3_ENDPOINT=http://minio:9000
+    volumes:
+      - ./notebooks:/home/iceberg/notebooks
+      - ./spark-apps:/home/iceberg/spark-apps
+      - ./conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - ./conf/core-site.xml:/opt/spark/conf/core-site.xml
+      - ./conf/core-default.xml:/opt/spark/conf/core-default.xml
+      - ./conf/hive-site.xml:/opt/spark/conf/hive-site.xml
+      - ./libs/hadoop-aws-3.3.4.jar:/opt/spark/jars/hadoop-aws-3.3.4.jar
+      - ./libs/hadoop-common-3.3.4.jar:/opt/spark/jars/hadoop-common-3.3.4.jar
+      - ./libs/spark-sql-kafka-0-10_2.12-3.3.0.jar:/opt/spark/jars/spark-sql-kafka-0-10_2.12-3.3.0.jar
+      - ./libs/kafka-clients-2.8.1.jar:/opt/spark/jars/kafka-clients-2.8.1.jar
+      - ./libs/jsr305-3.0.0.jar:/opt/spark/jars/jsr305-3.0.0.jar
+      - ./libs/lz4-java-1.7.1.jar:/opt/spark/jars/lz4-java-1.7.1.jar
+      - ./libs/spark-tags_2.12-3.3.0.jar:/opt/spark/jars/spark-tags_2.12-3.3.0.jar
+      - ./libs/spark-token-provider-kafka-0-10_2.12-3.3.0.jar:/opt/spark/jars/spark-token-provider-kafka-0-10_2.12-3.3.0.jar
+      - ./libs/commons-pool2-2.11.1.jar:/opt/spark/jars/commons-pool2-2.11.1.jar
+      - ./libs/commons-logging-1.1.3.jar:/opt/spark/jars/commons-logging-1.1.3.jar
+      - ./libs/aws-java-sdk-bundle-1.12.283.jar:/opt/spark/jars/aws-java-sdk-bundle-1.12.283.jar
+    ports:
+      - 8888:8888
+      - 8080:8080
+      - 18080:18080
+      - 4040:4040      
+    command: pyspark-notebook
+
+    networks:
+      - trino-network
+  
+  order-generator:
+    image: brennrec/order-generator:0.0.1
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_URL=kafka:9092
+    networks:
+      - trino-network
+

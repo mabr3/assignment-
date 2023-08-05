@@ -9,7 +9,19 @@ table:
       type: STRING
     - name: company_name
       type: STRING
-    - name: specialized_industries
+    - name: ingest_date
+      type: DATE
+---
+table:
+  schema: assignment_db
+  name: companies
+  format: iceberg
+  partition:
+    - ingest_date
+  columns:
+    - name: company_name
+      type: STRING
+    - name: industry
       type: STRING
     - name: ingest_date
       type: DATE

@@ -114,8 +114,13 @@ To run:
 ```./spark-jobs-python/run-in-spark.sh initial_loader.py```
 
 ### Customers batch flow
-For the customer data, assuming this would be a CSV that gets uploaded from time to time, the ideal solution would be to have a service like AWS Lambda which would be triggered by new files in a certain bucket and process them.
+For the customer data, assuming this would be a CSV that gets uploaded from time to time, the ideal solution would be to have a service like AWS Lambda which would be triggered by new files in a certain bucket and process them. Although minio is also able to produce events when a new file is added this would require reading the info from a Kafka queue or similar.
+
 In this case, the approach I've followed was to have a spark stream reading from the bucket, so that when a new file with data came into a specific folder, it would get processed. Then, I would save the data. For this, I've also created a new folder inside the **demo-data** bucket, as described in the infra section.
+
+The customers data is split into Customers with their ID and the company they work for, and into Companies, which has the company name and the respective industry.
+
+Here, since there are no options fo UPSERT with PySpark, I'm using the MERGE INTO functionality of Iceberg to achieve the same results.
 
 To run:
 
@@ -132,6 +137,10 @@ To run:
 ### Aggregated Data Job
 
 In order to produce the results and answer the aforementioned question, this solution has a job called **fluctuations.py** that will provide us with the top 3 fluctuations and store them in the required table. This job first loads the dimensions data (customers and their industries) and joins it in a broadcast with the orders data. To this dataset, a filter is applied using the table partitions for each of the time periods (24h and 30d). Then they are joined and the comparison is made.
+
+In order to make sure only correct industries are used, a join is made with the industries data.
+
+Since this data is unique for each day, every run overwrites the partition that corresponds to the aggregated day.
 
 To run it, there are two options. We can give it a specific date to use as the 24h we want to aggregate:
 ```./spark-jobs-python/run-in-spark.sh fluctuations.py --agg_date=2023-08-04```

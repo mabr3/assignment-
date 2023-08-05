@@ -1,12 +1,10 @@
 import logging
 import yaml
-import importlib
-from pyspark.sql.functions import current_date, explode, from_json
+from pyspark.sql.functions import current_date, explode, from_json, split, col
 from pyspark.sql import SparkSession
-from yaml.loader import SafeLoader
 from utils import check_tables
 from schemas.orders import Order, OrderLine
-from schemas.customers import Customers
+from schemas.customers import Customers, Companies
 from schemas.products import Products
 from schemas.industries import Industries
 logging.basicConfig(level=logging.INFO,
@@ -26,12 +24,34 @@ def load_data(spark, entry, path, tables):
         logger.info(f"Loading {entry} with schema {data_schema}")
         df = spark.read.option('header', 'true').schema(data_schema).csv(path + entry)
         df = df.withColumn('ingest_date', current_date())
-        df \
-            .write \
-            .format('iceberg') \
-            .mode('append') \
-            .partitionBy('ingest_date') \
-            .saveAsTable(f"{tables[0]['table']['schema']}.{tables[0]['table']['name']}")
+        if not 'Customers' in entry:
+            df \
+                .write \
+                .format('iceberg') \
+                .mode('append') \
+                .insertInto(f"{tables[0]['table']['schema']}.{tables[0]['table']['name']}")
+        else:
+            df \
+                .select('customer_id', 'company_name', 'ingest_date') \
+                .write \
+                .format('iceberg') \
+                .mode('append') \
+                .insertInto(f"{tables[0]['table']['schema']}.{tables[0]['table']['name']}")
+
+            df \
+                .select('company_name', 'specialized_industries') \
+                .withColumn('industry', explode(split(col('specialized_industries'), ';'))) \
+                .join(
+                    df.filter(col('specialized_industries').isNull()) \
+                        .selectExpr('company_name','specialized_industries as industry_'), on='company_name', how='outer') \
+                .select('company_name', 'industry') \
+                .distinct() \
+                .withColumn('ingest_date', current_date()) \
+                .write \
+                .format('iceberg') \
+                .mode('append') \
+                .insertInto(f"{tables[1]['table']['schema']}.{tables[1]['table']['name']}")
+
         
     elif entry[-4:] == 'json':
         data_schema = Order().get_schema()
@@ -52,7 +72,7 @@ def load_data(spark, entry, path, tables):
             .write \
             .format('iceberg') \
             .mode('append') \
-            .partitionBy('year', 'month', 'day', 'order_id') \
+            .partitionBy('year', 'month', 'day') \
             .saveAsTable(f"{tables[1]['table']['schema']}.{tables[1]['table']['name']}")
 
 def run():

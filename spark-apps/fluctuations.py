@@ -42,12 +42,21 @@ def run(agg_date):
     tables_list = [i for i in table_schemas]
     check_tables(spark, tables_list)
 
+    industries_dimension = spark \
+            .read \
+            .format('iceberg') \
+            .load('assignment_db.industries')
+    companies_dimension = spark \
+            .read \
+            .format('iceberg') \
+            .load('assignment_db.companies')
     customers_dimension = spark \
         .read \
         .format('iceberg') \
         .load('assignment_db.customers') \
-        .dropna(subset=['specialized_industries']) \
-        .withColumn('industry', explode(split(col('specialized_industries'), ';'))) \
+        .join(companies_dimension \
+              .join(industries_dimension, on=['industry'], how='right')
+              , on=['company_name'], how='right') \
         .select("customer_id", "industry")
 
     orders_with_industry = spark. \

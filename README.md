@@ -54,7 +54,7 @@ erDiagram
   }
 
   Orders ||--|{ Order_Lines : contains
-  Orders ||--|| Customers : has
+  Orders ||--|| Customers : made_by
   Orders {
     string order_id PK
     string customer_id FK
@@ -70,20 +70,25 @@ erDiagram
     float price
   }
 
-  Customers ||-|{O Industries : is part of 
+  Customers ||--o{ Companies : in
   Customers {
     string customer_id PK
-    string company_name
-	  string industry FK
+    string company_name FK
+  }
+
+  Companies  ||--|| Industries : work_in
+  Companies {
+    string company_name PK
+    string industry FK
   }
 
   Industries {
     string industry PK
     ingest_date date
   }
-
+  Fluctuations ||--|| Industries : relates_to
   Fluctuations {
-	string industry PK
+	string industry PK,FK
 	date aggregation_date PK
 	float string[30d_avg]
 	float string[24h_value]
@@ -100,11 +105,21 @@ In the **schemas** folder, I'm storing both table DDL in a YAML file, as well as
 
 ### Initial Data Loader
 
-In this job, all of the required tables are created and populated with the demo data.
+In this job, all of the required tables are created and populated with the demo data. Whatever processing is done here to the data (e.g. splitting order_lines from each order) is also done on the streaming and batch pipelines. This should have been a more dynamic solution which would take multiple arguments depending on what we'd want to do, or read a config file with the info on what fields to read, tables to create, etc, but due to time constraints it ended up being a mix between that an something "quick and dirty".
+
+It has a list of files to ingest, it's respective schemas and table DDL, loads them, parses them and ingests the data into their respective tables.
+
+To run:
+
+```./spark-jobs-python/run-in-spark.sh initial_loader.py```
 
 ### Customers batch flow
 For the customer data, assuming this would be a CSV that gets uploaded from time to time, the ideal solution would be to have a service like AWS Lambda which would be triggered by new files in a certain bucket and process them.
 In this case, the approach I've followed was to have a spark stream reading from the bucket, so that when a new file with data came into a specific folder, it would get processed. Then, I would save the data. For this, I've also created a new folder inside the **demo-data** bucket, as described in the infra section.
+
+To run:
+
+```./spark-jobs-python/run-in-spark.sh customers.py```
 
 ### Orders Stream Flow
 

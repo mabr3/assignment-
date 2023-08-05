@@ -17,11 +17,11 @@ table:
     - name: timestamp
       type: TIMESTAMP
     - name: year
-      type: STRING
+      type: INTEGER
     - name: month
-      type: STRING
+      type: INTEGER
     - name: day
-      type: STRING
+      type: INTEGER
 ---      
 table:
   schema: assignment_db
@@ -43,8 +43,8 @@ table:
     - name: timestamp
       type: TIMESTAMP
     - name: year
-      type: STRING
+      type: INTEGER
     - name: month
-      type: STRING
+      type: INTEGER
     - name: day
-      type: STRING
+      type: INTEGER

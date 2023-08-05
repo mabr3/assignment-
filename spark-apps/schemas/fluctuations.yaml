@@ -15,3 +15,5 @@ table:
       type: float
     - name: 30d_avg
       type: float
+    - name: diff
+      type: float
